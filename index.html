@@ -158,7 +158,7 @@ nav button.on{color:var(--ac);font-weight:700}
     const h = new URLSearchParams(location.hash.slice(1));
     let s = h.get('s'), k = h.get('k');
     try {
-      if (s && k) { localStorage.setItem('cls_s', s); localStorage.setItem('cls_k', k); history.replaceState(null, '', location.pathname); }
+      if (k) localStorage.setItem('cls_k', k);   // 주소 # 뒤 키는 지우지 않음 (홈 화면 아이콘도 키를 갖게)
       s = s || localStorage.getItem('cls_s'); k = k || localStorage.getItem('cls_k');
     } catch (e) {}
     return { s: 'https://script.google.com/macros/s/AKfycbyZk59VTZON8WV6r8Nz5zQ1fgFPWLmXjyCwkpZPW5al3vDAkYV3vktOxxEMrAtzONw/exec', k };
