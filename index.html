@@ -58,6 +58,7 @@ nav button.on{color:var(--ac);font-weight:700}
 .nb{height:54px;border-radius:12px;border:1px solid #dcdcda;background:#fff;font-size:15px;cursor:pointer}
 .nb small{display:block;font-size:11px;color:var(--mut)}
 .nb.on{background:var(--ac);color:#fff;border-color:var(--ac)}.nb.on small{color:#fff;opacity:.8}
+.nb{position:relative}.nb .bt{position:absolute;top:3px;right:6px;font-size:10px;font-weight:600;opacity:.75}
 .docedit{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;flex-wrap:wrap}
 .docedit select{height:36px;border:1px solid #dcdcda;border-radius:8px;padding:0 8px;background:#fff}
 .docedit button{height:36px;border:0;border-radius:8px;background:var(--ac);color:#fff;padding:0 14px;font-weight:600}
@@ -138,6 +139,7 @@ nav button.on{color:var(--ac);font-weight:700}
   <div class="wrap">
     <input class="line" type="date" id="chkDate" aria-label="날짜" onchange="loadCheck()">
     <div class="lab" id="chkInfo"></div>
+    <div class="lab" id="chkBt" style="color:var(--ac)"></div>
     <div class="grid" id="chkGrid"></div>
     <div class="msg" id="chkMsg"></div>
     <button class="btn" id="chkSave" onclick="saveCheck()">저장</button>
@@ -573,22 +575,43 @@ nav button.on{color:var(--ac);font-weight:700}
   }
 
   /* 출석 체크 */
-  let chk = new Set(), chkSaved = false;
+  // chkOff = 이 화면에서 손으로 끈 학생 (블루투스 감지로 다시 켜지 않음), chkBt = 학번 → 마지막 감지 시각
+  let chk = new Set(), chkSaved = false, chkOff = new Set(), chkBt = {}, chkBtLast = null, chkTimer = null;
   function renderCheck() {
-    $('chkGrid').innerHTML = D.students.map(s => '<button class="nb' + (chk.has(s['학번']) ? ' on' : '') + '" onclick="tgChk(\'' + s['학번'] + '\')"><small>' + s['학번'].slice(-2) + '</small>' + esc(s['이름']) + '</button>').join('');
+    $('chkGrid').innerHTML = D.students.map(s => {
+      const id = s['학번'], bt = chk.has(id) && chkBt[id] ? '<span class="bt">' + esc(chkBt[id]) + '</span>' : '';
+      return '<button class="nb' + (chk.has(id) ? ' on' : '') + '" onclick="tgChk(\'' + id + '\')">' + bt + '<small>' + id.slice(-2) + '</small>' + esc(s['이름']) + '</button>';
+    }).join('');
     $('chkInfo').textContent = '출석 ' + chk.size + ' / ' + D.students.length + (chkSaved ? ' · 저장된 기록 있음' : ' · 아직 저장 안 함');
+    $('chkBt').textContent = chkBtLast ? '블루투스 자동 반영 중 · ' + chkBtLast.time + ' 스캔 (' + chkBtLast.found + '명 감지) · 시각 = 마지막 감지' : '';
   }
-  function tgChk(id) { chk.has(id) ? chk.delete(id) : chk.add(id); renderCheck(); msg('chkMsg', ''); }
+  function tgChk(id) {
+    if (chk.has(id)) { chk.delete(id); chkOff.add(id); } else { chk.add(id); chkOff.delete(id); }
+    renderCheck(); msg('chkMsg', '');
+  }
   function loadCheck() {
     const date = $('chkDate').value; if (!date) return;
     msg('chkMsg', '불러오는 중…');
-    api('getCheck', { date }).then(r => { chk = new Set(r.present); chkSaved = r.saved; renderCheck(); msg('chkMsg', ''); })
+    chkOff = new Set(); chkBt = {}; chkBtLast = null;
+    api('getCheck', { date }).then(r => { chk = new Set(r.present); chkSaved = r.saved; chkBt = r.bt || {}; chkBtLast = r.btLast || null; renderCheck(); msg('chkMsg', ''); })
       .catch(e => msg('chkMsg', e.message, 'bad'));
   }
+  // 오늘 날짜 체크 탭이 보이는 동안 10초마다: 블루투스로 O 된 학생을 더하기만 함 (빼지 않음)
+  function pollCheck() {
+    const date = $('chkDate').value;
+    if (document.hidden || !D || date !== D.today || !$('p-chk').classList.contains('on')) return;
+    api('getCheck', { date }).then(r => {
+      if ($('chkDate').value !== date) return;
+      r.present.forEach(id => { if (!chkOff.has(id)) chk.add(id); });
+      chkSaved = chkSaved || r.saved; chkBt = r.bt || {}; chkBtLast = r.btLast || null;
+      renderCheck();
+    }).catch(() => {});
+  }
+  if (!chkTimer) chkTimer = setInterval(pollCheck, 10000);
   function saveCheck() {
     const date = $('chkDate').value; if (!date) return msg('chkMsg', '날짜를 골라 주세요.', 'bad');
     $('chkSave').disabled = true; msg('chkMsg', '저장 중…');
-    api('saveCheck', { date, present: Array.from(chk) }).then(r => {
+    api('saveCheck', { date, present: Array.from(chk), off: Array.from(chkOff) }).then(r => {
       chkSaved = true; renderCheck(); msg('chkMsg', '저장했어요 · 출석 ' + r.present + ' / 결석 ' + (r.count - r.present), 'ok');
     }).catch(e => msg('chkMsg', e.message, 'bad')).finally(() => { $('chkSave').disabled = false; });
   }
