@@ -128,6 +128,53 @@
   .card { border-color: #ececea; border-radius: 12px; }
   body.embed .page { min-height: 0; }
   .printed { font-size: 12px; color: #4b3564; margin-top: 3px; font-weight: 600; }
+  /* 학급관리 앱 디자인에 맞춤 (보라 #4b3564 · 연보라 #f3eff8 · 선 #ececea) */
+  html { scrollbar-width: none; } html::-webkit-scrollbar { display: none; }
+  body { color: #111; letter-spacing: -.01em; }
+  body.web { font-size: 15px; }
+  .bar { padding: 14px 22px 0; color: #6b6b6b; font-size: 13px; }
+  .bar button, .chk .all { color: #4b3564; font-weight: 600; font-size: 13px; }
+  .bar.err { color: #b42318; }
+  .list { padding: 8px 22px 24px; }
+  .group { font-size: 12px; font-weight: 600; color: #6b6b6b; margin: 18px 0 8px; }
+  .card { border: 0; background: #f3eff8; border-radius: 16px; padding: 14px 16px; margin-bottom: 8px; }
+  .name { font-weight: 600; font-size: 16px; }
+  .name small, .ptop .who small { color: #6b6b6b; }
+  .sub { color: #6b6b6b; font-size: 13px; margin-top: 4px; }
+  .miss { color: #b42318; font-size: 13px; margin-top: 4px; }
+  .fixnote { color: #9a4a00; font-size: 13px; }
+  .days { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: #fff; color: #4b3564; }
+  .days.warn { background: #fff1e0; color: #9a4a00; }
+  .days.alert { background: #fdecea; color: #b42318; }
+  .acts { gap: 6px; margin-top: 10px; }
+  .acts button { height: 40px; border: 0; border-radius: 10px; background: #fff; color: #4b3564; font-weight: 600; font-size: 14px; padding: 0 8px; }
+  .acts button:hover { background: #4b3564; border: 0; color: #fff; }
+  .chk { background: #fff; border: 0; border-radius: 12px; padding: 12px; margin-top: 10px; }
+  .chk .ct { color: #4b3564; font-size: 13px; }
+  .chk .cr input, .chk .cr select { height: 36px; border: 1px solid #dcdcda; border-radius: 8px; padding: 0 8px; }
+  .chk .acts button { background: #f3eff8; }
+  .chk .acts button.ok { background: #4b3564; color: #fff; }
+  .chk .acts button.ok:disabled { background: #d9d2e3; }
+  .chk label.ci input { accent-color: #4b3564; }
+  .mnav { margin: 6px 0 10px; font-size: 17px; font-weight: 700; }
+  .mnav button { border: 0; background: #f3eff8; color: #4b3564; border-radius: 10px; width: 38px; height: 34px; padding: 0; font-size: 16px; }
+  .mtbl { font-size: 14px; }
+  .mtbl th, .mtbl td { border: 0; border-bottom: 1px solid #ececea; padding: 10px 4px; }
+  .mtbl th { background: none; color: #6b6b6b; font-size: 12px; font-weight: 600; }
+  .mtbl tr.dup td { background: #fff1e0; }
+  .mtbl tr.click:hover td { background: #f3eff8; }
+  .empty { color: #6b6b6b; padding: 30px 0; font-size: 14px; }
+  .sec .sh { border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .sec.err .sh { background: #fdecea; color: #b42318; }
+  .sec.warn .sh { background: #fff1e0; color: #9a4a00; }
+  .sec.info .sh, .sec.ok .sh { background: #f3eff8; color: #4b3564; }
+  .ci2 { padding: 10px 4px; border-bottom: 1px solid #ececea; font-size: 14px; background: none; }
+  .ci2 b { font-size: 15px; } .ci2 .t { color: #6b6b6b; }
+  .ci2.click:hover { background: #f3eff8; }
+  .vnote { color: #6b6b6b; font-size: 13px; }
+  .auto { border: 1px dashed #d9cfe6; background: #f3eff8; border-radius: 12px; }
+  #printSaved { border: 0; background: #f3eff8; color: #4b3564; border-radius: 10px; font-weight: 600; }
+  button.primary { border-radius: 10px; font-weight: 600; }
 </style>
 </head>
 <body>
