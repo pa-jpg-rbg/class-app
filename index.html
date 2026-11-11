@@ -63,6 +63,17 @@ nav button.on{color:var(--ac);font-weight:700}
 .evadd input{height:40px;border:1px solid #dcdcda;border-radius:10px;padding:0 10px;font-size:15px;background:#fff;min-width:0}
 .evadd input[type=date]{flex:none;width:140px}.evadd input:not([type]){flex:1}
 .evadd button{height:40px;border:0;border-radius:10px;background:var(--ac);color:#fff;font-weight:600;padding:0 14px;flex:none}
+.pnav{display:flex;align-items:center;justify-content:space-between}
+.pnav b{font-size:17px}.pnav button{border:0;background:var(--soft);color:var(--ac);border-radius:10px;width:38px;height:34px;font-size:16px;cursor:pointer}
+.pcnt{font-size:13px;color:var(--ac);font-weight:600}
+.pi{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:11px 12px;border:1px solid #e3dded;border-radius:10px;background:#fff;color:#111;font-size:14px;cursor:pointer;white-space:nowrap;overflow:hidden}
+.pi .w{font-weight:700}.pi .tx{overflow:hidden;text-overflow:ellipsis}.pi .sd{margin-left:auto;font-size:12px;color:var(--mut);flex:none}
+.pi.done{background:var(--soft);border-color:var(--soft);color:#a39cad}.pi.done .tx,.pi.done .w{text-decoration:line-through}.pi.done .sd{color:#c2bccb}
+.pev{display:flex;gap:6px;margin:-6px 0 0 24px}
+.pev button{flex:1;padding:8px 10px;border:1px solid #e3dded;border-radius:10px;background:#fff;color:var(--ac);font-size:13px;font-weight:600;cursor:pointer}
+.pev button.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.pev.done button:not(.on){background:var(--soft);border-color:var(--soft);color:#c2bccb}
+.pgap{height:6px}
 .subtabs{display:flex;gap:4px;padding:10px 22px 0;background:var(--soft);overflow-x:auto}
 .subtabs button{border:0;background:none;padding:8px 12px;border-radius:10px 10px 0 0;font-size:14px;color:var(--mut);cursor:pointer;white-space:nowrap}
 .subtabs button.on{background:#fff;color:var(--ac);font-weight:700}
@@ -121,6 +132,7 @@ html.app{zoom:.7}
     <button data-s="menses" onclick="attSub('menses')">생리</button>
     <button data-s="check" onclick="attSub('check')">점검</button>
   </div>
+  <div class="wrap" id="paperBox" style="display:none"></div>
   <iframe id="attFrame" title="출결 도우미" style="display:none"></iframe>
   <div class="wrap" id="attInput">
     <label class="lab" for="text">자유 입력 (여러 줄 가능)</label>
@@ -520,8 +532,10 @@ html.app{zoom:.7}
   function attSub(s) {
     document.querySelectorAll('#attSub button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
     $('attInput').style.display = s === 'input' ? '' : 'none';
+    $('paperBox').style.display = s === 'check' ? '' : 'none';
     const f = $('attFrame');
-    f.style.display = s === 'input' ? 'none' : 'block';
+    f.style.display = s === 'input' || s === 'check' ? 'none' : 'block';
+    if (s === 'check') return loadPaper();
     if (s === 'input') return;
     const url = 'att.html#' + s;
     if (!f.src) f.src = url; else f.contentWindow.location.hash = s;
@@ -529,6 +543,57 @@ html.app{zoom:.7}
 
   // 출결 작은 탭(att.html)이 알려 주는 내용 높이에 맞춰 칸 높이 조정
   addEventListener('message', e => { if (e.data && e.data.attH) $('attFrame').style.height = Math.max(300, e.data.attH) + 'px'; });
+
+  /* 점검 탭: 종이 서류 정리 순서 (규칙: 학급관리앱/출결서류_정리규칙.md) */
+  let paperYm = null, paper = null;
+  const yy = s => s.slice(2, 4) + '.' + s.slice(5, 7) + '.' + s.slice(8, 10) + '.';
+  function loadPaper() {
+    if (!paperYm) paperYm = (D ? D.today : new Date().toISOString()).slice(0, 7);
+    $('paperBox').innerHTML = '<div class="empty">불러오는 중…</div>';
+    api('paper', { ym: paperYm }).then(p => { paper = p; renderPaper(); })
+      .catch(e => { $('paperBox').innerHTML = '<div class="msg bad">' + esc(e.message) + '</div>'; });
+  }
+  function movePaper(n) {
+    const [y, m] = paperYm.split('-').map(Number); const t = new Date(y, m - 1 + n, 1);
+    paperYm = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0'); loadPaper();
+  }
+  function renderPaper() {
+    const p = paper, mk = p.marks || {}, m = Number(p.ym.slice(5));
+    const rows = [];   // [키, html, 종류]
+    const who = r => '<span class="w">' + esc(r.id) + ' ' + esc(r.name) + '</span>';
+    const when = r => r.from === r.to ? yy(r.from) : yy(r.from) + '~' + yy(r.to);
+    const line = r => who(r) + '<span class="tx"> ' + when(r) + ' ' + esc(r.reason) + '</span>';
+    rows.push(['month|' + p.ym, '<span class="tx">월별 출결 현황</span>']);
+    if (p.menses) rows.push(['menses|' + p.ym, '<span class="tx">출석인정 처리원 (생리통)</span>']);
+    if (rows.length) rows.push(null);
+    p.reps.forEach(r => { rows.push([r.k, line(r) + '<span class="sd">제출 ' + yy(r.submit) + '</span>']); if (r.ev) rows.push([r.k, null, 'ev']); });
+    if (p.trips.length) {
+      rows.push(null);
+      rows.push(['tripcover|' + p.ym, '<span class="tx">체험학습 신청서 및 보고서철 표지</span>']);
+      p.trips.forEach(r => rows.push([r.k, line(r)]));
+    }
+    let total = 0, done = 0;
+    const html = rows.map(x => {
+      if (!x) return '<div class="pgap"></div>';
+      const [k, h, kind] = x;
+      if (kind === 'ev') {
+        const v = mk['ev|' + k] || ''; total++; if (v) done++;
+        return '<div class="pev' + (v ? ' done' : '') + '"><button class="' + (v === 'ev' ? 'on' : '') + '" onclick="markPaper(\'ev|' + esc(k) + '\',\'ev\')">증빙</button>' +
+          '<button class="' + (v === 'alt' ? 'on' : '') + '" onclick="markPaper(\'ev|' + esc(k) + '\',\'alt\')">사유 기재</button></div>';
+      }
+      total++; if (mk[k]) done++;
+      return '<button class="pi' + (mk[k] ? ' done' : '') + '" onclick="markPaper(\'' + esc(k) + '\',\'done\')">' + h + '</button>';
+    }).join('');
+    $('paperBox').innerHTML = '<div class="pnav"><button aria-label="이전 달" onclick="movePaper(-1)">‹</button><b>' + m + '월</b><button aria-label="다음 달" onclick="movePaper(1)">›</button></div>' +
+      '<div class="pcnt">정리 완료 ' + done + ' / ' + total + '</div>' + html + '<div class="msg" id="paperMsg"></div>';
+  }
+  function markPaper(k, v) {
+    const mk = paper.marks = paper.marks || {};
+    const nv = mk[k] === v ? '' : v;
+    if (nv) mk[k] = nv; else delete mk[k];
+    renderPaper();
+    api('paperMark', { k, v: nv }).catch(e => { msg('paperMsg', e.message, 'bad'); loadPaper(); });
+  }
 
   /* 일정 · 전달사항 */
   function renderEvents() {
