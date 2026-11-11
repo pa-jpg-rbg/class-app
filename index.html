@@ -66,19 +66,37 @@ nav button.on{color:var(--ac);font-weight:700}
 .pnav{display:flex;align-items:center;justify-content:space-between}
 .pnav b{font-size:17px}.pnav button{border:0;background:var(--soft);color:var(--ac);border-radius:10px;width:38px;height:34px;font-size:16px;cursor:pointer}
 .pcnt{font-size:13px;color:var(--ac);font-weight:600}
-.pi{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:11px 12px;border:1px solid #e3dded;border-radius:10px;background:#fff;color:#111;font-size:14px;cursor:pointer;white-space:nowrap;overflow:hidden}
-.pi .w{font-weight:700}.pi .tx{overflow:hidden;text-overflow:ellipsis}.pi .sd{margin-left:auto;font-size:12px;color:var(--mut);flex:none}
-.pi.done{background:var(--soft);border-color:var(--soft);color:#a39cad}.pi.done .tx,.pi.done .w{text-decoration:line-through}.pi.done .sd{color:#c2bccb}
-.pev{display:flex;gap:6px;margin:-6px 0 0 24px}
-.pev button{flex:1;padding:8px 10px;border:1px solid #e3dded;border-radius:10px;background:#fff;color:var(--ac);font-size:13px;font-weight:600;cursor:pointer}
-.pev button.on{background:var(--ac);border-color:var(--ac);color:#fff}
-.pev.done button:not(.on){background:var(--soft);border-color:var(--soft);color:#c2bccb}
-.pgap{height:6px}
+.pi{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 12px;border-left:3px solid transparent;border-top:1px solid #eeeaf2;font-size:14px;cursor:pointer;white-space:nowrap;overflow:hidden;color:#111;user-select:none}
+.plist{margin:0 -10px;border-bottom:1px solid #eeeaf2}
+.pi .w{font-weight:700;flex:none}.pi .tx{overflow:hidden;text-overflow:ellipsis;color:#2a2233}.pi .pp{color:var(--ac);font-weight:600}
+.pi .sd{margin-left:auto;font-size:12px;color:#8a8294;flex:none;padding-left:4px}
+.pi .fx{display:none;font-size:11px;font-weight:700;color:#8a5a00;background:#f6ecd9;border-radius:6px;padding:2px 6px;flex:none}
+.pi.fix .fx{display:inline}.pi.fix{box-shadow:inset 0 0 0 1px #e2c99a}
+.pi.ev{border-top:0;padding:4px 10px 10px 36px}
+.pi .ch{display:flex;gap:6px}
+.pi .ch i{font-style:normal;font-size:13px;font-weight:600;padding:5px 12px;border-radius:8px;border:1px solid #e3dded;color:var(--ac);background:#fff}
+.pi .ch i.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.pi.done{background:#faf8fc;border-left-color:#cbbfdb}
+.pi.done .w,.pi.done .tx,.pi.done .pp{color:#b3abbd;text-decoration:line-through}.pi.done .sd{color:#cfc9d6}
+.pi.done .ch i:not(.on){color:#c2bccb;border-color:#eeeaf2;background:#faf8fc}
+.pi.cur{border-left-color:var(--ac);background:var(--soft)}
+.pgap{height:12px;border-top:1px solid #eeeaf2}
+.pkey{font-size:12px;color:#6b6377;display:flex;flex-wrap:wrap;gap:4px 10px}
+.pkey kbd{font-family:inherit;font-size:11px;border:1px solid #d9d2e3;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#faf8fc;color:var(--ac)}
+@media (hover:none){.pkey{display:none}}
 .subtabs{display:flex;gap:4px;padding:10px 22px 0;background:var(--soft);overflow-x:auto}
 .subtabs button{border:0;background:none;padding:8px 12px;border-radius:10px 10px 0 0;font-size:14px;color:var(--mut);cursor:pointer;white-space:nowrap}
 .subtabs button.on{background:#fff;color:var(--ac);font-weight:700}
 #attFrame{width:100%;border:0;display:block;height:600px}
-html.app{zoom:.7}
+.mon{border-bottom:1px solid var(--line)}
+.mon summary{display:flex;justify-content:space-between;align-items:center;min-height:48px;cursor:pointer;list-style:none;font-weight:600;font-size:15px}
+.mon summary::-webkit-details-marker{display:none}
+.mon summary::after{content:'›';color:var(--mut);font-size:18px;transition:transform .2s;margin-left:8px}
+.mon[open] summary::after{transform:rotate(90deg)}
+.mon summary .n{margin-left:auto;font-size:13px;color:var(--mut);font-weight:400}
+.mon .row:last-child{border-bottom:0}
+html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
+html.app{zoom:.875}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .nb{height:54px;border-radius:12px;border:1px solid #dcdcda;background:#fff;font-size:15px;cursor:pointer}
 .nb small{display:block;font-size:11px;color:var(--mut)}
@@ -128,9 +146,9 @@ html.app{zoom:.7}
   <div class="subtabs" id="attSub">
     <button class="on" data-s="input" onclick="attSub('input')">입력</button>
     <button data-s="docs" onclick="attSub('docs')">서류</button>
-    <button data-s="neis" onclick="attSub('neis')">나이스</button>
     <button data-s="menses" onclick="attSub('menses')">생리</button>
     <button data-s="check" onclick="attSub('check')">점검</button>
+    <button data-s="neis" onclick="attSub('neis')">나이스</button>
   </div>
   <div class="wrap" id="paperBox" style="display:none"></div>
   <iframe id="attFrame" title="출결 도우미" style="display:none"></iframe>
@@ -204,9 +222,9 @@ html.app{zoom:.7}
   (function fitWindow() {
     const app = matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches || matchMedia('(display-mode: window-controls-overlay)').matches;
     if (!app) return;
-    document.documentElement.classList.add('app');   // 창 70% + 화면도 70%
+    document.documentElement.classList.add('app');   // 화면 87.5%(엣지 125%로 본 크기), 창은 본문 폭 520px 에 맞춤
     const fit = () => {
-      const w = 378 + (outerWidth - innerWidth), h = Math.min(screen.availHeight - 20, 658 + (outerHeight - innerHeight));
+      const w = 455 + (outerWidth - innerWidth), h = Math.min(screen.availHeight - 20, 822 + (outerHeight - innerHeight));
       if (Math.abs(outerWidth - w) > 4 || Math.abs(outerHeight - h) > 4) {
         try { resizeTo(w, h); moveTo(Math.max(0, (screen.availWidth - w) >> 1), Math.max(0, (screen.availHeight - h) >> 1)); } catch (e) {}
       }
@@ -545,55 +563,84 @@ html.app{zoom:.7}
   addEventListener('message', e => { if (e.data && e.data.attH) $('attFrame').style.height = Math.max(300, e.data.attH) + 'px'; });
 
   /* 점검 탭: 종이 서류 정리 순서 (규칙: 학급관리앱/출결서류_정리규칙.md) */
-  let paperYm = null, paper = null;
+  let paperYm = null, paper = null, paperCur = 0, paperItems = [];
   const yy = s => s.slice(2, 4) + '.' + s.slice(5, 7) + '.' + s.slice(8, 10) + '.';
-  function loadPaper() {
+  // 받은 점검 목록은 달마다 저장해 두고 먼저 보여 준 뒤 뒤에서 새로 받음
+  function paperCache(ym, p) { try { if (p) localStorage.setItem('cls_paper_' + ym, JSON.stringify(p)); else return JSON.parse(localStorage.getItem('cls_paper_' + ym) || 'null'); } catch (e) { return null; } }
+  function loadPaper(quiet) {
     if (!paperYm) paperYm = (D ? D.today : new Date().toISOString()).slice(0, 7);
-    $('paperBox').innerHTML = '<div class="empty">불러오는 중…</div>';
-    api('paper', { ym: paperYm }).then(p => { paper = p; renderPaper(); })
-      .catch(e => { $('paperBox').innerHTML = '<div class="msg bad">' + esc(e.message) + '</div>'; });
+    const ym = paperYm, c = paperCache(ym);
+    if (!quiet) { if (c) { paper = c; renderPaper(); } else $('paperBox').innerHTML = '<div class="empty">불러오는 중…</div>'; }
+    return api('paper', { ym }).then(p => { paperCache(ym, p); if (ym === paperYm) { paper = p; if ($('paperBox').style.display !== 'none') renderPaper(); } })
+      .catch(e => { if (!quiet && !c) $('paperBox').innerHTML = '<div class="msg bad">' + esc(e.message) + '</div>'; });
   }
   function movePaper(n) {
     const [y, m] = paperYm.split('-').map(Number); const t = new Date(y, m - 1 + n, 1);
-    paperYm = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0'); loadPaper();
+    paperYm = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0'); paperCur = 0; loadPaper();
   }
   function renderPaper() {
     const p = paper, mk = p.marks || {}, m = Number(p.ym.slice(5));
-    const rows = [];   // [키, html, 종류]
+    const it = paperItems = [];   // {k, ev, html} / null = 빈 줄
     const who = r => '<span class="w">' + esc(r.id) + ' ' + esc(r.name) + '</span>';
     const when = r => r.from === r.to ? yy(r.from) : yy(r.from) + '~' + yy(r.to);
-    const line = r => who(r) + '<span class="tx"> ' + when(r) + ' ' + esc(r.reason) + '</span>';
-    rows.push(['month|' + p.ym, '<span class="tx">월별 출결 현황</span>']);
-    if (p.menses) rows.push(['menses|' + p.ym, '<span class="tx">출석인정 처리원 (생리통)</span>']);
-    if (rows.length) rows.push(null);
-    p.reps.forEach(r => { rows.push([r.k, line(r) + '<span class="sd">제출 ' + yy(r.submit) + '</span>']); if (r.ev) rows.push([r.k, null, 'ev']); });
+    const per = r => { const t = r.per && ctx ? perShort(r.type, perIdx(r.per)) : ''; return t ? '<span class="pp">' + esc(t) + '</span> ' : ''; };
+    const line = r => who(r) + '<span class="tx">' + when(r) + ' ' + per(r) + esc(r.type) + ' · ' + esc(r.reason) + '</span>';
+    const head = t => '<span class="tx">' + t + '</span>';
+    it.push({ k: 'month|' + p.ym, html: head('월별 출결 현황') });
+    if (p.menses) it.push({ k: 'menses|' + p.ym, html: head('출석인정 처리원 (생리통)') });
+    it.push(null);
+    p.reps.forEach(r => { it.push({ k: r.k, html: line(r) + '<span class="sd">제출 ' + yy(r.submit) + '</span>' }); if (r.ev) it.push({ k: 'ev|' + r.k, ev: 1 }); });
     if (p.trips.length) {
-      rows.push(null);
-      rows.push(['tripcover|' + p.ym, '<span class="tx">체험학습 신청서 및 보고서철 표지</span>']);
-      p.trips.forEach(r => rows.push([r.k, line(r)]));
+      it.push(null);
+      it.push({ k: 'tripcover|' + p.ym, html: head('체험학습 신청서 및 보고서철 표지') });
+      p.trips.forEach(r => it.push({ k: r.k, html: line(r) }));
     }
-    let total = 0, done = 0;
-    const html = rows.map(x => {
+    const real = it.filter(Boolean);
+    paperCur = Math.max(0, Math.min(paperCur, real.length - 1));
+    let n = -1, done = 0;
+    const fx = '<span class="fx">수정</span>';
+    const html = it.map(x => {
       if (!x) return '<div class="pgap"></div>';
-      const [k, h, kind] = x;
-      if (kind === 'ev') {
-        const v = mk['ev|' + k] || ''; total++; if (v) done++;
-        return '<div class="pev' + (v ? ' done' : '') + '"><button class="' + (v === 'ev' ? 'on' : '') + '" onclick="markPaper(\'ev|' + esc(k) + '\',\'ev\')">증빙</button>' +
-          '<button class="' + (v === 'alt' ? 'on' : '') + '" onclick="markPaper(\'ev|' + esc(k) + '\',\'alt\')">사유 기재</button></div>';
-      }
-      total++; if (mk[k]) done++;
-      return '<button class="pi' + (mk[k] ? ' done' : '') + '" onclick="markPaper(\'' + esc(k) + '\',\'done\')">' + h + '</button>';
+      n++; const v = mk[x.k] || '', cls = 'pi' + (x.ev ? ' ev' : '') + (v ? ' done' : '') + (mk['fix|' + x.k] ? ' fix' : '') + (n === paperCur ? ' cur' : '');
+      if (v) done++;
+      if (x.ev) return '<div class="' + cls + '" onclick="paperClick(event,' + n + ')"><span class="ch"><i data-v="ev" class="' + (v === 'ev' ? 'on' : '') + '">증빙</i><i data-v="alt" class="' + (v === 'alt' ? 'on' : '') + '">사유 기재</i></span>' + fx + '</div>';
+      return '<div class="' + cls + '" onclick="paperClick(event,' + n + ')">' + x.html + fx + '</div>';
     }).join('');
     $('paperBox').innerHTML = '<div class="pnav"><button aria-label="이전 달" onclick="movePaper(-1)">‹</button><b>' + m + '월</b><button aria-label="다음 달" onclick="movePaper(1)">›</button></div>' +
-      '<div class="pcnt">정리 완료 ' + done + ' / ' + total + '</div>' + html + '<div class="msg" id="paperMsg"></div>';
+      '<div class="pcnt">정리 완료 ' + done + ' / ' + real.length + '</div><div class="plist">' + html + '</div>' +
+      '<div class="pkey"><span><kbd>Enter</kbd> 정리 끝·다음</span><span><kbd>1</kbd> 증빙 <kbd>2</kbd> 사유 기재</span><span><kbd>F</kbd> 수정 필요</span><span><kbd>↑</kbd><kbd>↓</kbd> 이동</span><span><kbd>⌫</kbd> 되돌리기</span></div><div class="msg" id="paperMsg"></div>';
+    const cur = document.querySelector('#paperBox .pi.cur'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
   }
-  function markPaper(k, v) {
+  function setPaper(k, v) {
     const mk = paper.marks = paper.marks || {};
-    const nv = mk[k] === v ? '' : v;
-    if (nv) mk[k] = nv; else delete mk[k];
-    renderPaper();
-    api('paperMark', { k, v: nv }).catch(e => { msg('paperMsg', e.message, 'bad'); loadPaper(); });
+    if ((mk[k] || '') === v) return;
+    if (v) mk[k] = v; else delete mk[k];
+    paperCache(paperYm, paper);
+    api('paperMark', { k, v }).catch(e => { msg('paperMsg', e.message, 'bad'); loadPaper(); });
   }
+  function paperClick(e, n) {
+    const x = paperItems.filter(Boolean)[n], mk = paper.marks || {}, c = e.target.closest('i');
+    paperCur = n;
+    if (x.ev) { if (c) setPaper(x.k, mk[x.k] === c.dataset.v ? '' : c.dataset.v); }
+    else setPaper(x.k, mk[x.k] ? '' : 'done');
+    renderPaper();
+  }
+  // 키보드: Enter/Space 정리 끝 → 다음, 1 증빙, 2 사유 기재, F 수정 필요, ↑↓ 이동, Backspace 되돌리기
+  addEventListener('keydown', e => {
+    if (!paper || $('paperBox').style.display === 'none' || !$('paperBox').offsetParent) return;
+    if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName || '') || e.ctrlKey || e.altKey || e.metaKey) return;
+    const list = paperItems.filter(Boolean), x = list[paperCur], mk = paper.marks || {}, k = e.key;
+    if (!x) return;
+    const go = d => { paperCur = Math.max(0, Math.min(list.length - 1, paperCur + d)); };
+    if (k === 'ArrowDown') go(1);
+    else if (k === 'ArrowUp') go(-1);
+    else if (k === 'Enter' || k === ' ') { setPaper(x.k, mk[x.k] || (x.ev ? 'ev' : 'done')); go(1); }
+    else if (x.ev && (k === '1' || k === '2')) { setPaper(x.k, k === '1' ? 'ev' : 'alt'); go(1); }
+    else if (k === 'f' || k === 'F' || k === 'ㄹ') setPaper('fix|' + x.k, mk['fix|' + x.k] ? '' : 'fix');
+    else if (k === 'Backspace') setPaper(x.k, '');
+    else return;
+    e.preventDefault(); renderPaper();
+  });
 
   /* 일정 · 전달사항 */
   function renderEvents() {
@@ -673,7 +720,17 @@ html.app{zoom:.7}
       msg('attMsg', res.count + '건 저장했어요', 'ok'); reload();
     }).catch(e => { msg('attMsg', e.message, 'bad'); $('saveAtt').disabled = false; });
   }
-  function renderAttList() { $('attList').innerHTML = D.att.slice(0, 40).map(a => attRow(a, true)).join('') || '<div class="empty">기록 없음</div>'; }
+  // 최근 3일은 펼쳐 보이고(날짜 최신순 → 이름순), 그 전은 달마다 접어 둠
+  function renderAttList() {
+    const by = (a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name, 'ko');
+    const t = new Date(D.today + 'T00:00:00'); t.setDate(t.getDate() - 2);
+    const cut = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    const all = D.att.slice().sort(by), recent = all.filter(a => a.date >= cut), old = all.filter(a => a.date < cut);
+    const months = [];
+    old.forEach(a => { const m = a.date.slice(0, 7); if (!months.length || months[months.length - 1].m !== m) months.push({ m, list: [] }); months[months.length - 1].list.push(a); });
+    $('attList').innerHTML = (recent.length ? recent.map(a => attRow(a, true)).join('') : '<div class="empty">최근 3일 기록 없음</div>') +
+      months.map(g => '<details class="mon"><summary><span>' + (+g.m.slice(5)) + '월</span><span class="n">' + g.list.length + '건</span></summary>' + g.list.map(a => attRow(a, true)).join('') + '</details>').join('');
+  }
 
   /* 기록 */
   function renderRec() {
@@ -760,7 +817,7 @@ html.app{zoom:.7}
   }
   // 마지막으로 받은 내용을 이 기기에 저장 → 다음에 열 때 바로 보여 주고, 최신 내용은 뒤에서 받아 바꿈
   function keep(d) { try { localStorage.setItem('cls_data', JSON.stringify(d)); } catch (e) {} }
-  function reload() { api('get').then(d => { D = d; keep(d); render(); }).catch(() => {}); }
+  function reload() { api('get').then(d => { D = d; keep(d); render(); if (!paper) loadPaper(true); }).catch(() => {}); }   // 점검 목록도 미리 받아 둠
 
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem('cls_data') || 'null'); } catch (e) {}
