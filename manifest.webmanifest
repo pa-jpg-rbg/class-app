@@ -1,0 +1,27 @@
+{
+  "name": "학급관리",
+  "short_name": "학급관리",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ece7f3",
+  "theme_color": "#4b3564",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "./share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  },
+  "shortcuts": [
+    { "name": "출결 입력", "url": "./#go=att", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "출석 체크", "url": "./#go=chk", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "학생 연락처", "url": "./#go=stu", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}
