@@ -862,7 +862,7 @@ html.app{zoom:.875}
     const b = h.get('b'), from = h.get('sms') || '';
     if (b == null) return null;
     // 새로 고침 때 다시 뜨지 않게 주소에서 문자 부분만 지움
-    const via = h.get('v') || '';   // v=sub : 서브폰으로 온 문자(메인폰 Automate가 엶) → 답장도 서브폰으로
+    const via = h.get('v') || '';   // v=sub : 업무폰으로 온 문자(개인폰 Automate가 엶) → 답장도 업무폰으로
     h.delete('b'); h.delete('sms'); h.delete('v');
     smsClearHash(h);
     return { from, body: b, via };
@@ -1025,6 +1025,9 @@ html.app{zoom:.875}
     go('att'); attSub('input');
     const box = $('smsBox');
     box.style.display = '';
+    // 업무폰이 넘겨준 문자(태스커 전달 등): 본문 속 보호자 번호로 학생 찾기
+    const fw = (SMS_IN.body.match(/01[016789][\d\-. ]{7,11}\d/g) || []).map(n => [n, smsFindSender(n, D.students)]).find(x => x[1] && x[1].who !== '학생');
+    if (fw) { SMS_IN.from = fw[0]; return smsPick(fw[1].s, fw[1].who); }
     if (SMS_IN.share) {
       // 공유: 제목(보낸 사람 이름이 올 때) → 본문 속 이름 순서로 찾기. 못 찾으면 선생님이 고름
       const f = smsFindByName(SMS_IN.title, D.students) || smsFindByName(SMS_IN.body, D.students);
@@ -1087,13 +1090,13 @@ html.app{zoom:.875}
     // 자동(Automate)으로 온 문자는 보낸 사람에게만 답장. 공유는 보낸 사람을 모르니 보호자 번호를 다 보여 줌
     let nums = smsNums(smsCur);
     if (!SMS_IN.share && smsCur.who) nums = nums.slice(0, 1);
-    const sub = SMS_IN.via === 'sub', hi = ' style="background:var(--ac);color:#fff"';
-    const subB = nums[0] ? '<button class="ghost"' + (sub ? hi : '') + ' onclick="smsSub()">서브폰으로 보내기</button>' : '';
+    const sub = SMS_IN.via === 'sub' || !!smsSubNum(), hi = ' style="background:var(--ac);color:#fff"';
+    const subB = nums[0] ? '<button class="ghost"' + (sub ? hi : '') + ' onclick="smsSub()">업무폰으로 보내기</button>' : '';
     const btn = (x, i) => '<button class="ghost"' + (i || sub ? '' : hi) + ' onclick="smsSend(\'' + x[1] + '\')">' + esc(x[0]) + '께 보내기</button>';
     box.innerHTML = '<div class="card"><div class="t"><b>' + esc(smsCur.s['이름']) + ' ' + esc(nums[0] ? nums[0][0] : '보호자') + '께 답장</b>' + (nums[0] ? '<span class="chip">' + esc(smsNum(nums[0][1])) + '</span>' : '') + '</div>' +
       '<textarea id="smsText" class="sms-text"></textarea>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap" class="sms-acts">' + (sub ? subB + nums.map(btn).join('') : nums.map(btn).join('') + subB) + '<button class="ghost" onclick="smsCopy()">복사</button><button class="ghost" onclick="smsClose()">답장 안 함</button></div>' +
-      '<div class="msg" id="smsMsg">' + (nums.length && sub ? '서브폰 번호로 온 문자예요. [서브폰으로 보내기]를 누르면 서브폰이 보냅니다. (다른 버튼은 이 폰 문자 앱)' : nums.length ? '문자 앱이 열리면 내용을 보고 직접 보내세요. 카톡·하이클래스로 답하려면 [복사].' : '학생명단에 보호자 번호가 없어요. [복사]해서 보내세요.') + '</div></div>';
+      '<div class="msg" id="smsMsg">' + (nums.length && sub ? '[업무폰으로 보내기] → 문자 앱이 업무폰 앞으로 열리면 ["번호","답장"] 꼴 그대로 보내세요. 업무폰이 학부모께 다시 보내요. <a href="#" onclick="smsSubSet();return false">업무폰 번호</a>' : nums.length ? '문자 앱이 열리면 내용을 보고 직접 보내세요. 카톡·하이클래스로 답하려면 [복사].' : '학생명단에 보호자 번호가 없어요. [복사]해서 보내세요.') + '</div></div>';
     $('smsText').value = smsDraft(smsCur, r);
     smsSubTo = nums[0] || null;
     window.scrollTo(0, 0);
@@ -1103,26 +1106,24 @@ html.app{zoom:.875}
     if (!num || !text) return;
     location.href = 'sms:' + num + '?body=' + encodeURIComponent(text);
   }
-  /** 서브폰으로 보내기: 서버 「보낼문자」에 넣으면 서브폰 Automate가 꺼내 보냄. 선생님이 누를 때만 (2026-11-17) */
-  let smsSubTo = null, smsSubT = 0;
+  /** 업무폰으로 보내기 (2026-11-17, 서버 없음): 이 폰 문자 앱을 업무폰 번호로 열고 «["학부모번호","답장"]»을 채움(업무폰_중계.flo가 읽는 꼴).
+   *  선생님이 직접 보내면 업무폰 Automate가 받아서 학부모 번호로 다시 보냄. 업무폰 번호는 이 폰에만 저장. */
+  let smsSubTo = null;
+  const SMS_SUB_KEY = 'cls_subNum';
+  function smsSubNum() { try { return localStorage.getItem(SMS_SUB_KEY) || ''; } catch (e) { return ''; } }
+  function smsSubSet() {
+    const v = prompt('업무폰 번호 (이 폰에만 저장돼요)', smsSubNum());
+    if (v == null) return smsSubNum();
+    const d = smsDigits(v);
+    try { if (d) localStorage.setItem(SMS_SUB_KEY, d); else localStorage.removeItem(SMS_SUB_KEY); } catch (e) {}
+    return d;
+  }
   function smsSub() {
-    const text = $('smsText').value.trim(), x = smsSubTo, m = $('smsMsg');
-    if (!x || !text || !smsCur) return;
-    if (!confirm('서브폰 번호로 ' + x[0] + '께 보낼까요?\n' + smsNum(x[1]) + '\n\n' + text)) return;
-    m.textContent = '서브폰에 넘기는 중…';
-    api('smsQueue', { to: x[1], who: smsCur.s['이름'] + ' ' + x[0], body: text }).then(o => {
-      m.textContent = '서브폰이 가져가길 기다려요(1분쯤).';
-      clearInterval(smsSubT); let n = 0;
-      smsSubT = setInterval(() => {
-        if (!document.body.contains(m)) return clearInterval(smsSubT);
-        if (++n > 44) { clearInterval(smsSubT); m.textContent = '서브폰이 안 가져갔어요. 서브폰 Automate·인터넷을 확인하세요. 10분 지난 요청은 보내지 않아요.'; return; }
-        api('smsStatus', { id: o.id }).then(s => {
-          if (s.state === '보냄') { clearInterval(smsSubT); m.textContent = '서브폰으로 보냈어요.'; }
-          else if (s.state === '실패' || s.state === '시간 지남') { clearInterval(smsSubT); m.textContent = '서브폰에서 못 보냈어요(' + s.state + '). 문자 앱으로 보내 주세요.'; }
-          else if (s.state === '보내는 중') m.textContent = '서브폰이 보내는 중…';
-        }).catch(() => {});
-      }, 15000);
-    }).catch(e => { m.textContent = '못 넘겼어요: ' + e.message; });
+    const text = $('smsText').value.trim(), x = smsSubTo;
+    if (!x || !text) return;
+    const sn = smsSubNum() || smsSubSet();
+    if (!sn) return;
+    location.href = 'sms:' + sn + '?body=' + encodeURIComponent(JSON.stringify([x[1], text]));
   }
   function smsCopy() {
     const t = $('smsText'), done = () => { $('smsMsg').textContent = '복사했어요. 보낼 앱에 붙여 넣으세요.'; };
