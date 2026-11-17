@@ -241,7 +241,8 @@ html.app{zoom:.875}
   // 앱으로 설치해 연 창이면 창 폭에 맞춰 화면 배율을 바꿈 (엣지 앱 창은 resizeTo 가 안 먹어서 창 대신 화면을 맞춤)
   (function fitWindow() {
     const app = matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches || matchMedia('(display-mode: window-controls-overlay)').matches;
-    if (!app) return;
+    // 폰(터치) 설치 앱은 건드리지 않음 — 360~412px 폭을 520 기준으로 줄여 글자가 작아졌었음
+    if (!app || matchMedia('(pointer: coarse)').matches) return;
     const html = document.documentElement; html.classList.add('app');
     const fit = () => {
       const w = innerWidth, base = w >= 900 ? 820 : 520;   // 본문 폭(900px 넘으면 넓은 화면 배치)
