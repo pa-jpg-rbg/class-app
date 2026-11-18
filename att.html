@@ -1002,6 +1002,7 @@
     const close = () => ov.remove();
     no.onclick = close;
     ov.onclick = e => { if (e.target === ov) close(); };
+    placeInView(ov, box);
     alt.onclick = e => { e.preventDefault(); close(); browserPrint(groups); };
     // 양식 그림을 미리 받아 둠 (버튼을 누르는 순간 바로 클립보드에 담아야 해서)
     if (!formBg) {
@@ -1028,6 +1029,25 @@
       } else { setBar('클립보드에 담지 못해 인쇄 창으로 엽니다', true); browserPrint(groups); }
     };
     go.focus();
+  }
+
+  /**
+   * 학급관리 화면 안(iframe)에서는 iframe 높이가 내용 길이만큼 늘어나 있어서
+   * position:fixed 창이 긴 iframe 한가운데(화면 밖)에 뜸 → 부모 화면에 보이는 부분 가운데로 옮김
+   */
+  function placeInView(ov, box) {
+    let fe = null;
+    try { fe = window.frameElement; } catch (e) { fe = null; }
+    if (!fe) return;
+    try {
+      const r = fe.getBoundingClientRect();
+      const s = r.height / (window.innerHeight || r.height || 1) || 1;   // 부모 zoom 비율
+      const visTop = Math.max(0, -r.top) / s;
+      const visH = (Math.min(window.parent.innerHeight, r.bottom) - Math.max(0, r.top)) / s;
+      const top = Math.max(8, visTop + (visH - box.offsetHeight) / 2);
+      ov.style.alignItems = 'flex-start';
+      ov.style.paddingTop = top + 'px';
+    } catch (e) {}
   }
 
   /** 버튼을 누른 그 순간에 바로 클립보드에 담기 (큰 글도 됨) */
