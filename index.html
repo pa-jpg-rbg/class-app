@@ -178,6 +178,7 @@ html.app{zoom:.875}
     <div class="ex">
       <button onclick="ex('9/4 홍길동 생리결석')">9/4 홍길동 생리결석</button>
       <button onclick="ex('홍길동 5교시 조퇴 어지러움')">5교시 조퇴 어지러움</button>
+      <button onclick="ex('9/7~9/9 홍길동 체험학습')">9/7~9/9 체험학습</button>
     </div>
     <div class="lab">미리보기</div>
     <div id="preview"><div class="empty">입력하면 여기에 나눠서 보여요.</div></div>
@@ -312,6 +313,28 @@ html.app{zoom:.875}
     return validDate(y, mo, d) ? ymd(y, mo, d) : null;
   }
 
+  /** 기간 '9/4~9/8' · '9/4~8' → { dates:[평일만] } | { err } | null(기간 꼴 아님). 토·일은 늘 뺌 */
+  function parseDateRange(tok, today) {
+    const m = tok.match(/^([^~]+)~([^~]+)$/);
+    if (!m) return null;
+    const a = parseDateToken(m[1], today);
+    if (!a) return null;
+    let b = /^\d{1,2}$/.test(m[2]) ? null : parseDateToken(m[2], today);
+    if (!b) {
+      if (!/^\d{1,2}$/.test(m[2])) return null;
+      // 끝이 '일'만 → 시작과 같은 달, 시작일보다 작으면 다음 달 (9/29~2 → 10/2)
+      let y = +a.slice(0, 4), mo = +a.slice(5, 7); const d = +m[2];
+      if (d < +a.slice(8)) { mo++; if (mo > 12) { mo = 1; y++; } }
+      if (!validDate(y, mo, d)) return { err: '기간 끝 날짜가 이상해요' };
+      b = ymd(y, mo, d);
+    }
+    if (b < a) return { err: '기간 앞뒤가 거꾸로예요' };
+    if (b > shiftDate(a, 30)) return { err: '기간이 한 달보다 길어요' };
+    const dates = [];
+    for (let d = a; d <= b; d = shiftDate(d, 1)) { const w = new Date(d + 'T00:00:00').getDay(); if (w && w < 6) dates.push(d); }
+    return dates.length ? { dates } : { err: '기간에 평일이 없어요' };
+  }
+
   /** 교시 표현 → { range:[a,b] } | { from:a } | { to:b } | { single:a } */
   function parsePeriodToken(tok, labels) {
     if (!/교시|~|부터|까지/.test(tok)) return null;
@@ -390,7 +413,7 @@ html.app{zoom:.875}
   function parseText(text, ctx) {
     const find = makeStudentFinder(ctx.students);
     const out = [];
-    let carryDate = ctx.today;
+    let carryDates = [ctx.today];
 
     text.split(/\r?\n/).forEach((rawLine, lineNo) => {
       let line = rawLine.trim();
@@ -401,7 +424,10 @@ html.app{zoom:.875}
       line = line.replace(WEEKDAY_RE, '').replace(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/g, '$1/$2');
       line = line.replace(/(\d)\s+교시/g, '$1교시')
         .replace(/((?:\d\s*,\s*)+\d)\s*교시/g, m => m.replace('교시', '').split(/\s*,\s*/).map(x => x.trim() + '교시').join(' '));
+      // 기간: '9/4 ~ 9/8', '9/4-8', '9/4부터 8일까지' → '9/4~9/8' 한 낱말로 ('9/4부터 3교시'는 건드리지 않음)
+      line = line.replace(/(\d{1,2}[.\/]\d{1,2})\.?\s*(?:~|-|부터)\s*(\d{1,2}(?:[.\/]\d{1,2})?)(?!\d|\s*교시|[.\/]\d)\.?(?:\s*일(?=$|\s|까지))?(?:\s*까지)?/g, '$1~$2');
 
+      const dates = []; let rangeErr = '';
       let date = null, cat = null, kind = null, fullType = null;
       const studs = [], unknownStuds = [], reasonParts = [];
       let ev = null, rep = null;
@@ -409,10 +435,12 @@ html.app{zoom:.875}
       let aliasReason = null;
 
       line.split(/[\s,，、·]+/).filter(Boolean).forEach(tok => {
+        const rg = parseDateRange(tok, ctx.today);
+        if (rg) { if (rg.err) rangeErr = rg.err; else rg.dates.forEach(d => { if (dates.indexOf(d) < 0) dates.push(d); }); return; }
         const ps = parsePeriodToken(tok, ctx.periodLabels);
         if (ps) { periodSpecs.push(ps); return; }
         const dt = parseDateToken(tok, ctx.today);
-        if (dt) { date = dt; return; }
+        if (dt) { date = dt; if (dates.indexOf(dt) < 0) dates.push(dt); return; }
         if (/^\d{1,2}[.\/\-]\d{1,2}\.?$/.test(tok)) { reasonParts.push(tok); return; }
 
         const doc = tok.match(DOC_RE);
@@ -445,11 +473,11 @@ html.app{zoom:.875}
       });
 
       // 날짜만 적힌 줄 → 아래 줄들의 기본 날짜
-      if (date && !studs.length && !unknownStuds.length && !reasonParts.length && !fullType && !cat && !kind && !periodSpecs.length) {
-        carryDate = date;
+      if (dates.length && !rangeErr && !studs.length && !unknownStuds.length && !reasonParts.length && !fullType && !cat && !kind && !periodSpecs.length) {
+        if (dates.length) carryDates = dates.sort();
         return;
       }
-      const useDate = date || carryDate;
+      const useDates = rangeErr ? [''] : (dates.length ? dates.sort() : carryDates);
       // 아는 학생이 하나도 없으면, 맨 앞의 한글 2~4자를 이름으로 보고 확인 요청
       if (!studs.length && !unknownStuds.length && reasonParts.length > 1 && /^[가-힣]{2,4}$/.test(reasonParts[0])) {
         unknownStuds.push(reasonParts.shift());
@@ -489,14 +517,16 @@ html.app{zoom:.875}
       let periods = resolvePeriods(periodSpecs, finalKind, ctx.periodLabels.length);
       // 결석은 하루 전체를 칠함
       if (finalKind === '결석' && !periodSpecs.length) periods = ctx.periodLabels.map((_, k) => k);
-      const base = { line: lineNo + 1, date: useDate, type: type || '', reason, evidence: ev, report: rep, note, typeGuessed, periods };
-
-      if (!studs.length) {
-        out.push(Object.assign({ id: '', name: unknownStuds.join(' ') }, base));
-      } else {
-        studs.forEach(s => out.push(Object.assign({ id: String(s.id), name: s.name }, base, { periods: base.periods.slice() })));
-        unknownStuds.forEach(u => out.push(Object.assign({ id: '', name: u }, base)));
-      }
+      // 날짜가 여럿(기간·여러 날짜)이면 날짜마다 한 건씩
+      useDates.forEach(useDate => {
+        const base = { line: lineNo + 1, date: useDate, type: type || '', reason, evidence: ev, report: rep, note, typeGuessed, periods: periods.slice(), rangeErr };
+        if (!studs.length) {
+          out.push(Object.assign({ id: '', name: unknownStuds.join(' ') }, base));
+        } else {
+          studs.forEach(s => out.push(Object.assign({ id: String(s.id), name: s.name }, base, { periods: base.periods.slice() })));
+          unknownStuds.forEach(u => out.push(Object.assign({ id: '', name: u }, base)));
+        }
+      });
     });
 
     return out;
@@ -508,7 +538,8 @@ html.app{zoom:.875}
       const why = ctx.rosterFromSheet ? '명단에 없는 이름' : '명단에 없음 (학생명단 시트 없음)';
       problems.push({ level: 'err', msg: r.name ? (/동명이인/.test(r.name) ? '동명이인 — 학번으로 적어 주세요' : why) : '학생을 못 찾음' });
     }
-    if (!r.date) problems.push({ level: 'err', msg: '날짜 없음' });
+    if (r.rangeErr) problems.push({ level: 'err', msg: r.rangeErr });
+    else if (!r.date) problems.push({ level: 'err', msg: '날짜 없음' });
     if (!r.type) problems.push({ level: 'err', msg: '분류를 골라 주세요' });
     else if (ctx.types.indexOf(r.type) < 0) problems.push({ level: 'warn', msg: '드롭다운에 없는 분류' });
     if (/(지각|조퇴|결과)$/.test(r.type) && !(r.periods && r.periods.length)) problems.push({ level: 'warn', msg: '교시 미지정' });
@@ -576,13 +607,15 @@ html.app{zoom:.875}
     if (s === 'input') return;
     const url = 'att.html#' + s;
     if (!f.src) f.src = url; else f.contentWindow.location.hash = s;
+    // 점검 탭에서 바꾼 것(시트 서류 칸)이 저장된 뒤 서류 탭을 새로 읽음 — 반대(서류 → 점검)는 없음
+    if (paperSync) { const p = paperSync; paperSync = null; p.then(() => { try { f.contentWindow.document.getElementById('refresh').click(); } catch (e) {} }); }
   }
 
   // 출결 작은 탭(att.html)이 알려 주는 내용 높이에 맞춰 칸 높이 조정
   addEventListener('message', e => { if (e.data && e.data.attH) $('attFrame').style.height = Math.max(300, e.data.attH) + 'px'; });
 
   /* 점검 탭: 종이 서류 정리 순서 (규칙: 학급관리앱/출결서류_정리규칙.md) */
-  let paperYm = null, paper = null, paperCur = 0, paperItems = [];
+  let paperYm = null, paper = null, paperCur = 0, paperItems = [], paperSync = null;
   const yy = s => s.slice(2, 4) + '.' + s.slice(5, 7) + '.' + s.slice(8, 10) + '.';
   // 받은 점검 목록은 달마다 저장해 두고 먼저 보여 준 뒤 뒤에서 새로 받음
   function paperCache(ym, p) { try { if (p) localStorage.setItem('cls_paper_' + ym, JSON.stringify(p)); else return JSON.parse(localStorage.getItem('cls_paper_' + ym) || 'null'); } catch (e) { return null; } }
@@ -635,7 +668,8 @@ html.app{zoom:.875}
     if ((mk[k] || '') === v) return;
     if (v) mk[k] = v; else delete mk[k];
     paperCache(paperYm, paper);
-    api('paperMark', { k, v }).catch(e => { msg('paperMsg', e.message, 'bad'); loadPaper(); });
+    const save = api('paperMark', { k, v }).catch(e => { msg('paperMsg', e.message, 'bad'); loadPaper(); });
+    paperSync = paperSync ? Promise.all([paperSync, save]) : save;
   }
   function paperClick(e, n) {
     const x = paperItems.filter(Boolean)[n], mk = paper.marks || {}, c = e.target.closest('i');
