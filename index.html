@@ -107,6 +107,9 @@ html.app{zoom:.875}
 .nb small{display:block;font-size:11px;color:var(--mut)}
 .nb.on{background:var(--ac);color:#fff;border-color:var(--ac)}.nb.on small{color:#fff;opacity:.8}
 .nb{position:relative}.nb .bt{position:absolute;top:3px;right:6px;font-size:10px;font-weight:600;opacity:.75}
+.nb .at{position:absolute;top:3px;right:6px;font-size:10px;font-weight:600;color:var(--org)}.nb .bt~.at{right:auto;left:6px}
+.nb.ab{background:var(--redbg);border-color:#f3cdc8;color:var(--red)}.nb.ab small,.nb.ab .at{color:var(--red)}
+.nb.on .at{color:#fff;opacity:.85}
 .docedit{display:grid;grid-template-columns:44px 1fr;gap:8px 10px;align-items:center;padding:12px;margin:6px 0 10px;border:1px solid var(--line);border-radius:10px;background:var(--soft);font-size:14px}
 .docedit .l{font-size:13px;color:var(--mut)}
 .docedit select,.docedit input{height:38px;width:100%;min-width:0;border:1px solid #dcdcda;border-radius:8px;padding:0 8px;background:#fff;font:inherit;color:inherit}
@@ -842,11 +845,25 @@ html.app{zoom:.875}
 
   /* 출석 체크 */
   // chkOff = 이 화면에서 손으로 끈 학생 (블루투스 감지로 다시 켜지 않음), chkBt = 학번 → 마지막 감지 시각
-  let chk = new Set(), chkSaved = false, chkOff = new Set(), chkBt = {}, chkBtLast = null, chkTimer = null;
+  let chk = new Set(), chkSaved = false, chkOff = new Set(), chkBt = {}, chkBtLast = null, chkTimer = null, chkAuto = '';
+  // 그 날짜 출결 기록 → 학번별 { ab: 결석인지, t: 칸에 쓸 글자 }. 결석이 있으면 결석만, 없으면 지각·조퇴·결과
+  function chkAtt(date) {
+    const m = {};
+    D.att.filter(a => a.date === date).forEach(a => {
+      const ab = /결석$/.test(a.type), k = ab ? a.type.replace(/결석$/, '').replace('출석인정', '인정') || '결석' : (a.type.match(/(지각|조퇴|결과)$/) || [])[1];
+      if (!k) return;
+      const x = m[a.id];
+      if (!x || (ab && !x.ab)) m[a.id] = { ab, t: [k] };
+      else if (x.ab === ab && x.t.indexOf(k) < 0) x.t.push(k);
+    });
+    return m;
+  }
   function renderCheck() {
+    const att = chkAtt($('chkDate').value);
     $('chkGrid').innerHTML = D.students.map(s => {
       const id = s['학번'], bt = chk.has(id) && chkBt[id] ? '<span class="bt">' + esc(chkBt[id]) + '</span>' : '';
-      return '<button class="nb' + (chk.has(id) ? ' on' : '') + '" onclick="tgChk(\'' + id + '\')">' + bt + '<small>' + id.slice(-2) + '</small>' + esc(s['이름']) + '</button>';
+      const a = att[id], at = a ? '<span class="at">' + esc(a.t.join('·')) + '</span>' : '';
+      return '<button class="nb' + (chk.has(id) ? ' on' : a && a.ab ? ' ab' : '') + '" onclick="tgChk(\'' + id + '\')">' + bt + at + '<small>' + id.slice(-2) + '</small>' + esc(s['이름']) + '</button>';
     }).join('');
     $('chkInfo').textContent = '출석 ' + chk.size + ' / ' + D.students.length + (chkSaved ? ' · 저장된 기록 있음' : ' · 아직 저장 안 함');
     $('chkBt').textContent = chkBtLast ? '블루투스 자동 반영 중 · ' + chkBtLast.time + ' 스캔 (' + chkBtLast.found + '명 감지) · 시각 = 마지막 감지' : '';
@@ -859,7 +876,7 @@ html.app{zoom:.875}
     const date = $('chkDate').value; if (!date) return;
     msg('chkMsg', '불러오는 중…');
     chkOff = new Set(); chkBt = {}; chkBtLast = null;
-    api('getCheck', { date }).then(r => { chk = new Set(r.present); chkSaved = r.saved; chkBt = r.bt || {}; chkBtLast = r.btLast || null; renderCheck(); msg('chkMsg', ''); })
+    api('getCheck', { date }).then(r => { if ($('chkDate').value !== date) return; chk = new Set(r.present); chkSaved = r.saved; chkBt = r.bt || {}; chkBtLast = r.btLast || null; renderCheck(); msg('chkMsg', ''); })
       .catch(e => msg('chkMsg', e.message, 'bad'));
   }
   // 오늘 날짜 체크 탭이 보이는 동안 10초마다: 블루투스로 O 된 학생을 더하기만 함 (빼지 않음)
@@ -1168,7 +1185,9 @@ html.app{zoom:.875}
   function render() {
     ctx = D.input; ctx.existingSet = new Set(ctx.existing);
     renderHome(); renderStudents(); renderAttList(); renderRec();
-    if (!$('chkDate').value) { $('chkDate').value = D.today; loadCheck(); }
+    // 저장해 둔 어제 자료로 먼저 열렸어도 오늘 날짜로 넘어감. 출결이 바뀌면 체크 칸 표시도 다시 그림
+    if (!$('chkDate').value || ($('chkDate').value === chkAuto && chkAuto !== D.today)) { $('chkDate').value = chkAuto = D.today; loadCheck(); }
+    else if ($('chkGrid').children.length) renderCheck();
     if (!$('evDate').value) $('evDate').value = D.today;
     smsStart();
   }
