@@ -750,6 +750,7 @@ html.app{zoom:.875}
   function ex(t) { $('text').value = t; onType(); }
   function onType() { clearTimeout(typingTimer); typingTimer = setTimeout(renderPreview, 200); }
   function renderPreview() {
+    ctx.today = localToday();
     rows = parseText($('text').value, ctx);
     const seen = new Set();
     let ok = 0;
@@ -794,7 +795,6 @@ html.app{zoom:.875}
     const cur = $('recStu').value;
     $('recStu').innerHTML = '<option value="">학생 고르기</option>' + D.students.map(s => '<option value="' + s['학번'] + '">' + s['학번'].slice(-2) + ' ' + esc(s['이름']) + '</option>').join('');
     if (cur) $('recStu').value = cur;
-    if (!$('recDate').value) $('recDate').value = D.today;
     $('recList').innerHTML = D.records.slice(0, 40).map(r => '<div class="row" style="align-items:flex-start;padding:12px 0;flex-direction:column;gap:4px"><span style="font-size:13px;color:var(--mut)">' + short(r.date) + ' · ' + esc(nameOf(r.id)) + '</span><span>' + esc(r.text) + '</span></div>').join('') || '<div class="empty">기록 없음</div>';
   }
   function saveRec() {
@@ -1182,26 +1182,41 @@ html.app{zoom:.875}
     else { t.select(); document.execCommand('copy'); done(); }
   }
   function smsClose() { smsCur = null; $('smsBox').style.display = 'none'; $('smsBox').innerHTML = ''; }
-  function render() {
-    ctx = D.input; ctx.existingSet = new Set(ctx.existing);
+  // 오늘 = 이 폰의 날짜 (저장해 둔 옛 자료·서버 응답이 늦어도 옛 날짜로 안 들어감)
+  function localToday() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  let dateAuto = '';
+  function render(force) {
+    const t = localToday();
+    if (D.today !== t) { D.today = t; D.todayAtt = (D.att || []).filter(a => a.date === t); }
+    ctx = D.input; ctx.today = t; ctx.existingSet = new Set(ctx.existing);
     renderHome(); renderStudents(); renderAttList(); renderRec();
-    // 저장해 둔 어제 자료로 먼저 열렸어도 오늘 날짜로 넘어감. 출결이 바뀌면 체크 칸 표시도 다시 그림
-    if (!$('chkDate').value || ($('chkDate').value === chkAuto && chkAuto !== D.today)) { $('chkDate').value = chkAuto = D.today; loadCheck(); }
+    // 앱을 열 때(force)는 날짜 칸을 모두 오늘로. 그 밖엔 비었거나 앱이 넣은 옛 날짜 그대로일 때만 바꿈(손으로 고른 날짜는 둠)
+    const old = (id, auto) => force || !$(id).value || ($(id).value === auto && auto !== t);
+    if (old('chkDate', chkAuto)) { $('chkDate').value = chkAuto = t; loadCheck(); }
     else if ($('chkGrid').children.length) renderCheck();
-    if (!$('evDate').value) $('evDate').value = D.today;
+    ['recDate', 'evDate'].forEach(id => { if (old(id, dateAuto)) $(id).value = t; });
+    dateAuto = t;
     smsStart();
   }
   // 마지막으로 받은 내용을 이 기기에 저장 → 다음에 열 때 바로 보여 주고, 최신 내용은 뒤에서 받아 바꿈
   function keep(d) { try { localStorage.setItem('cls_data', JSON.stringify(d)); } catch (e) {} }
-  function reload() { api('get').then(d => { D = d; keep(d); render(); if (!paper) loadPaper(true); }).catch(() => {}); }   // 점검 목록도 미리 받아 둠
+  let lastLoad = 0;
+  function reload() { lastLoad = Date.now(); api('get').then(d => { D = d; keep(d); render(); if (!paper) loadPaper(true); }).catch(() => {}); }
+  // 폰에서 뒤에 두었던 앱을 다시 켤 때: 날짜가 바뀌었으면 날짜 칸을 오늘로, 5분 넘었으면 새로 받음
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !D) return;
+    if (D.today !== localToday()) { render(true); reload(); }
+    else if (Date.now() - lastLoad > 5 * 60 * 1000) reload();
+  });   // 점검 목록도 미리 받아 둠
 
   // 앱 설치·[공유 → 학급관리] 받기용 (GitHub Pages·내 PC 시험에서만. Apps Script 화면에선 안 씀)
   if ('serviceWorker' in navigator && /github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname)) navigator.serviceWorker.register('sw.js').catch(() => {});
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem('cls_data') || 'null'); } catch (e) {}
-  if (cached && cached.students) { D = cached; render(); $('loading').style.display = 'none'; go('home'); }
+  if (cached && cached.students) { D = cached; render(true); $('loading').style.display = 'none'; go('home'); }
+  lastLoad = Date.now();
   api('get').then(d => {
-    D = d; keep(d); render();
+    D = d; keep(d); render(!cached);
     if (!cached) { $('loading').style.display = 'none'; go('home'); }
   }).catch(e => { if (!cached) $('loading').textContent = '불러오기 실패: ' + e.message; });
 </script>
